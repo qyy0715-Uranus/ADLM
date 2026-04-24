@@ -1,4 +1,3 @@
-import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -9,11 +8,63 @@ import torch
 import torch.nn as nn
 import numpy as np
 import faiss
-import medmnist
 from medmnist import INFO
 
 from vis_utils import visualize_2d_gaussians, save_image, save_progress_figure
-from geo_utils import build_rotation_matrix_2d, build_rotation_matrix_3d_quaternion
+
+
+def build_rotation_matrix_2d(theta):
+    '''
+    Builds a batch of 2x2 rotation matrices from angles.
+    theta: (K, 1) tensor of rotation angles
+    '''
+    K = theta.shape[0]
+    theta = theta.squeeze(-1)  # (K,)
+
+    cos_theta = torch.cos(theta)
+    sin_theta = torch.sin(theta)
+
+    R = torch.empty((K, 2, 2), device=theta.device, dtype=theta.dtype)
+    R[:, 0, 0] = cos_theta
+    R[:, 0, 1] = -sin_theta
+    R[:, 1, 0] = sin_theta
+    R[:, 1, 1] = cos_theta
+
+    return R
+
+
+def build_rotation_matrix_3d_quaternion(q):
+    '''
+    Builds a batch of 3x3 rotation matrices from a batch of quaternions.
+    q: (K, 4) tensor (w, x, y, z)
+    '''
+    # Normalize quaternions to ensure they are unit quaternions
+    q_norm = torch.nn.functional.normalize(q, p=2, dim=1)
+
+    w, x, y, z = q_norm[:, 0], q_norm[:, 1], q_norm[:, 2], q_norm[:, 3]
+
+    K = q.shape[0]
+    R = torch.empty((K, 3, 3), device=q.device, dtype=q.dtype)
+
+    # Pre-compute reused terms
+    x2, y2, z2 = x * x, y * y, z * z
+    xy, xz, yz = x * y, x * z, y * z
+    wx, wy, wz = w * x, w * y, w * z
+
+    # Fill the rotation matrix
+    R[:, 0, 0] = 1.0 - 2.0 * (y2 + z2)
+    R[:, 0, 1] = 2.0 * (xy - wz)
+    R[:, 0, 2] = 2.0 * (xz + wy)
+
+    R[:, 1, 0] = 2.0 * (xy + wz)
+    R[:, 1, 1] = 1.0 - 2.0 * (x2 + z2)
+    R[:, 1, 2] = 2.0 * (yz - wx)
+
+    R[:, 2, 0] = 2.0 * (xz - wy)
+    R[:, 2, 1] = 2.0 * (yz + wx)
+    R[:, 2, 2] = 1.0 - 2.0 * (x2 + y2)
+
+    return R
 
 
 class GaussianRepresentationND(nn.Module):
