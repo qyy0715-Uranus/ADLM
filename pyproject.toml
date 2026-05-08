@@ -1,0 +1,12 @@
+[project]
+name = "adlm"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "faiss-cpu>=1.13.2",
+    "kornia>=0.8.2",
+    "medmnist>=3.0.2",
+    "numpy>=2.4.4",
+    "torch>=2.11.0",
+    "torch-geometric>=2.7.0",
+]
