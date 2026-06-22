@@ -1,4 +1,4 @@
-# ADLM
+# Applied Deep Learning in Medicine 
 
 **Segmentation and Classification Tasks on Gaussian Representations of Images**
 
